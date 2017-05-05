@@ -7,6 +7,7 @@ from .sequencealigner import (
     GlobalSequenceAligner,
     StrictGlobalSequenceAligner,
     LocalSequenceAligner,
+    SmithWatermanAligner,
     Sequence,
     SimpleScoring
 )
@@ -175,3 +176,19 @@ class TestStrictGlobalSequenceAligner(CommonSequenceAlignerTests):
 class TestLocalSequenceAligner(CommonSequenceAlignerTests):
     def _align(self, first, second):
         return _local_align(first, second)
+
+class TestSmithWatermannAligner(CommonSequenceAlignerTests):
+    def _align(self, first, second):
+        scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
+        return _align(first, second, aligner=SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE))
+
+class TestSmithWatermannAlignerWithString(CommonSequenceAlignerTests):
+    def _align(self, first, second):
+        scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
+        aligner = SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE)
+        return aligner.align(
+            Sequence(first),
+            Sequence(second),
+            backtrace=True,
+            gap='-'
+        )

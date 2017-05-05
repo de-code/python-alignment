@@ -1,4 +1,5 @@
 from builtins import range
+from itertools import zip_longest
 try:
     import numpypy as numpy
 except ImportError:
@@ -398,3 +399,141 @@ class LocalSequenceAligner(SequenceAligner):
                     self.backtraceFrom(first, second, f, i - 1, j,
                                        alignments, alignment)
                     alignment.pop()
+
+class LinkedListNode(object):
+    def __init__(self, data, next_node=None):
+        self.data = data
+        self.next_node = next_node
+
+    def __str__(self):
+        if self.next_node is not None:
+            return str(self.data) + ' -> ' + str(self.next_node)
+        else:
+            return str(self.data)
+
+    def __iter__(self):
+        yield self.data
+        next_node = self.next_node
+        while next_node is not None:
+            yield next_node.data
+            next_node = next_node.next_node
+
+def _path_positions_to_indices(positions):
+    return [
+        p - 1 if p_next is None or p_next != p else None
+        for p, p_next in zip_longest(positions, positions[1:])
+    ]
+
+def _path_to_indices(path):
+    positions1, positions2 = zip(*path)
+    return (
+        _path_positions_to_indices(positions1),
+        _path_positions_to_indices(positions2)
+    )
+
+def _map_indices(indices, seq, default_value=None):
+    return [seq[i] if i is not None else default_value for i in indices]
+
+def _path_to_alignment(score_matrix, path, s1, s2, gap=GAP_CODE):
+    indices1, indices2 = _path_to_indices(path)
+    matched_seq1 = _map_indices(indices1, s1)
+    matched_seq2 = _map_indices(indices2, s2)
+    cum_scores = [score_matrix[i][j] for i, j in path]
+    scores = [score2 - score1 for score1, score2 in zip([0] + cum_scores, cum_scores)]
+    identical_count = sum([
+        1 if i1 is not None and i2 is not None and s1[i1] == s2[i2] else 0
+        for i1, i2 in zip(indices1, indices2)
+    ])
+    similar_count = sum([
+        1 if score > 0 else 0
+        for score in scores
+    ])
+    gap_count = sum([
+        1 if i1 is None or i2 is None else 0
+        for i1, i2 in zip(indices1, indices2)
+    ])
+    total_score = sum(scores)
+    first = Sequence([c or gap for c in matched_seq1])
+    second = Sequence([c or gap for c in matched_seq2])
+    seq_alignment = SequenceAlignment(first, second)
+    seq_alignment.scores = scores
+    seq_alignment.score = total_score
+    seq_alignment.identicalCount = identical_count
+    seq_alignment.similarCount = similar_count
+    seq_alignment.gapCount = gap_count
+    seq_alignment.first_indices = indices1
+    seq_alignment.second_indices = indices2
+    return seq_alignment
+
+class SmithWatermanAligner(object):
+    def __init__(self, scoring, gap_score):
+        self.scoring = scoring
+        self.gap_score = gap_score
+
+    def _create_score_matrix(self, rows, cols, calc_score):
+        score_matrix = numpy.zeros((rows, cols), int)
+
+        # Fill the scoring matrix.
+        for i in range(1, rows):
+            for j in range(1, cols):
+                score_matrix[i][j] = calc_score(score_matrix, i, j)
+        return score_matrix
+
+    def _traceback(self, score_matrix, start_locs):
+        pending_roots = [
+            LinkedListNode(tuple(loc))
+            for loc in start_locs
+        ]
+        cur_roots = []
+        while len(pending_roots) > 0:
+            next_pending_roots = []
+            for n in pending_roots:
+                i, j = n.data
+                moves = self._next_moves(score_matrix, i, j)
+                if len(moves) == 0:
+                    cur_roots.append(n)
+                else:
+                    next_pending_roots.extend([
+                        LinkedListNode(loc, n)
+                        for loc in moves
+                    ])
+            pending_roots = next_pending_roots
+        return cur_roots
+
+    def _next_moves(self, score_matrix, i, j):
+        diag = score_matrix[i - 1][j - 1]
+        up = score_matrix[i - 1][j]
+        left = score_matrix[i][j - 1]
+        max_score = max(diag, up, left)
+        moves = []
+        if max_score == 0:
+            return moves
+        if diag == max_score:
+            moves.append((i - 1, j - 1))
+        if up == max_score:
+            moves.append((i - 1, j))
+        if left == max_score:
+            moves.append((i, j - 1))
+        return moves
+
+    def align(self, s1, s2, backtrace=True, gap=GAP_CODE):
+        calc_score = lambda score_matrix, i, j: max(
+            0,
+            score_matrix[i - 1][j - 1] + self.scoring(s1[i - 1], s2[j - 1]),
+            score_matrix[i - 1][j] + self.gap_score,
+            score_matrix[i][j - 1] + self.gap_score
+        )
+        score_matrix = self._create_score_matrix(len(s1) + 1, len(s2) + 1, calc_score)
+        max_score = score_matrix.max()
+
+        if not backtrace:
+            return max_score
+
+        max_score_loc = numpy.argwhere(score_matrix == max_score)
+        paths = self._traceback(score_matrix, max_score_loc)
+        seq_alignments = [
+            _path_to_alignment(score_matrix, path, s1, s2, gap)
+            for path in paths
+        ]
+        score = seq_alignments[0].score if len(seq_alignments) > 0 else 0
+        return score, seq_alignments
