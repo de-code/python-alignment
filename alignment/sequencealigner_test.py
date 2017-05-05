@@ -3,12 +3,13 @@ Unit test
 """
 from .vocabulary import Vocabulary
 
+from .sequence import Sequence
+
 from .sequencealigner import (
     GlobalSequenceAligner,
     StrictGlobalSequenceAligner,
     LocalSequenceAligner,
     SmithWatermanAligner,
-    Sequence,
     SimpleScoring
 )
 

@@ -1,12 +1,17 @@
-from builtins import range
 from itertools import zip_longest
+
+from six import text_type
+from six.moves import range
+
 try:
     import numpypy as numpy
 except ImportError:
     import numpy
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
+from abc import abstractmethod
 
-from alignment.sequence import *
+from .sequence import GAP_CODE
+from .sequence import EncodedSequence, Sequence
 
 
 # Scoring ---------------------------------------------------------------------
@@ -132,11 +137,11 @@ class SequenceAlignment(object):
         return '%s\n%s' % (' '.join(first), ' '.join(second))
 
     def __unicode__(self):
-        first = [unicode(e) for e in self.first.elements]
-        second = [unicode(e) for e in self.second.elements]
+        first = [text_type(e) for e in self.first.elements]
+        second = [text_type(e) for e in self.second.elements]
         for i in range(len(first)):
             n = max(len(first[i]), len(second[i]))
-            format = u'%-' + unicode(n) + u's'
+            format = u'%-' + text_type(n) + u's'
             first[i] = format % first[i]
             second[i] = format % second[i]
         return u'%s\n%s' % (u' '.join(first), u' '.join(second))
@@ -321,9 +326,10 @@ class StrictGlobalSequenceAligner(SequenceAligner):
                     alignment.pop()
             if i != 0 and j != 0:
                 p = f[i - 1, j - 1]
-                #noinspection PyUnboundLocalVariable
+                # Silence the code inspection warning. We know at this point
+                # that a and b are assigned to values.
+                # noinspection PyUnboundLocalVariable
                 if c == p + self.scoring(a, b):
-                    #noinspection PyUnboundLocalVariable
                     alignment.push(a, b, c - p)
                     self.backtraceFrom(first, second, f, i - 1, j - 1,
                                        alignments, alignment)
@@ -453,8 +459,12 @@ def _path_to_alignment(score_matrix, path, s1, s2, gap=GAP_CODE):
         for i1, i2 in zip(indices1, indices2)
     ])
     total_score = sum(scores)
-    first = Sequence([c or gap for c in matched_seq1])
-    second = Sequence([c or gap for c in matched_seq2])
+    if isinstance(s1, EncodedSequence):
+        first = EncodedSequence([c or gap for c in matched_seq1], id=s1.id)
+        second = EncodedSequence([c or gap for c in matched_seq2], id=s2.id)
+    else:
+        first = Sequence([c or gap for c in matched_seq1])
+        second = Sequence([c or gap for c in matched_seq2])
     seq_alignment = SequenceAlignment(first, second)
     seq_alignment.scores = scores
     seq_alignment.score = total_score

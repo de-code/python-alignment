@@ -21,8 +21,11 @@ pip-log.txt
 .tox
 .cache
 
-#Translations
+# Translations
 *.mo
 
-#Mr Developer
+# Mr Developer
 .mr.developer.cfg
+
+# IntelliJ
+.idea
