@@ -480,13 +480,24 @@ class SmithWatermanAligner(object):
         self.scoring = scoring
         self.gap_score = gap_score
 
-    def _create_score_matrix(self, rows, cols, calc_score):
-        score_matrix = numpy.zeros((rows, cols), int)
+    def computeAlignmentMatrix(self, first, second):
+        m = len(first) + 1
+        n = len(second) + 1
+        f = numpy.zeros((m, n), int)
+        for i in range(1, m):
+            for j in range(1, n):
+                # Match elements.
+                ab = f[i - 1, j - 1] \
+                    + self.scoring(first[i - 1], second[j - 1])
 
-        for i in range(1, rows):
-            for j in range(1, cols):
-                score_matrix[i][j] = calc_score(score_matrix, i, j)
-        return score_matrix
+                # Gap on sequenceA.
+                ga = f[i, j - 1] + self.gap_score
+
+                # Gap on sequenceB.
+                gb = f[i - 1, j] + self.gap_score
+
+                f[i, j] = max(0, max(ab, max(ga, gb)))
+        return f
 
     def _traceback(self, score_matrix, start_locs):
         pending_roots = [
@@ -524,13 +535,7 @@ class SmithWatermanAligner(object):
         return None
 
     def align(self, s1, s2, backtrace=True, gap=GAP_CODE):
-        calc_score = lambda score_matrix, i, j: max(
-            0,
-            score_matrix[i - 1][j - 1] + self.scoring(s1[i - 1], s2[j - 1]),
-            score_matrix[i - 1][j] + self.gap_score,
-            score_matrix[i][j - 1] + self.gap_score
-        )
-        score_matrix = self._create_score_matrix(len(s1) + 1, len(s2) + 1, calc_score)
+        score_matrix = self.computeAlignmentMatrix(s1, s2)
         max_score = score_matrix.max()
 
         if not backtrace:
