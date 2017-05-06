@@ -124,6 +124,30 @@ class TestGlobalSequenceAligner(CommonSequenceAlignerTests):
     def _align(self, first, second):
         return _global_align(first, second)
 
+    def test_multiple_alignments(self):
+        score, alignments = self._align('xabcabcy', 'abc')
+        assert len(alignments) == 1
+        assert str(alignments[0].first) == 'a b c'
+        assert str(alignments[0].second) == 'a b c'
+        assert alignments[0].percentIdentity() == 3 / 3 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 3 * 100.0
+        assert alignments[0].percentGap() == 0.0
+        assert score == DEFAULT_MATCH_SCORE * 3
+        assert alignments[0].score == score
+
+    def test_shortest_path_alignment(self):
+        # this tests that it doesn't pick longer paths on the way
+        # (e.g. goes up instead of diagonally)
+        score, alignments = self._align('aac', 'bac')
+        assert len(alignments) == 1
+        assert str(alignments[0].first) == 'a a c'
+        assert str(alignments[0].second) == 'b a c'
+        assert alignments[0].percentIdentity() == 2 / 3 * 100.0
+        assert alignments[0].percentSimilarity() == 2 / 3 * 100.0
+        assert alignments[0].percentGap() == 0.0
+        assert score == DEFAULT_MATCH_SCORE * 2 + DEFAULT_MISMATCH_SCORE
+        assert alignments[0].score == score
+
 
 class TestStrictGlobalSequenceAligner(CommonSequenceAlignerTests):
     def _align(self, first, second):
@@ -173,17 +197,52 @@ class TestStrictGlobalSequenceAligner(CommonSequenceAlignerTests):
         assert score == DEFAULT_MATCH_SCORE * 2 + DEFAULT_MISMATCH_SCORE + DEFAULT_GAP_SCORE * 2
         assert alignments[0].score == score
 
+    def test_multiple_alignments(self):
+        score, alignments = self._align('xabcabcy', 'abc')
+        assert len(alignments) == 1
+        assert str(alignments[0].first) == 'x a b c a b c y'
+        assert str(alignments[0].second) == '- a b c - - - -'
+        assert alignments[0].percentIdentity() == 3 / 8 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 8 * 100.0
+        assert alignments[0].percentGap() == 5 / 8 * 100.0
+        assert score == DEFAULT_MATCH_SCORE * 3 + DEFAULT_GAP_SCORE * 5
+        assert alignments[0].score == score
+
 
 class TestLocalSequenceAligner(CommonSequenceAlignerTests):
     def _align(self, first, second):
         return _local_align(first, second)
 
-class TestSmithWatermannAligner(CommonSequenceAlignerTests):
+    def test_multiple_alignments(self):
+        score, alignments = self._align('xabcabcy', 'abc')
+        assert len(alignments) == 2
+        assert str(alignments[0].first) == 'a b c'
+        assert str(alignments[0].second) == 'a b c'
+        assert alignments[0].percentIdentity() == 3 / 3 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 3 * 100.0
+        assert alignments[0].percentGap() == 0.0
+        assert score == DEFAULT_MATCH_SCORE * 3
+        assert alignments[0].score == score
+
+    def test_shortest_path_alignment(self):
+        # this tests that it doesn't pick longer paths on the way
+        # (e.g. goes up instead of diagonally)
+        score, alignments = self._align('aac', 'bac')
+        assert len(alignments) == 1
+        assert str(alignments[0].first) == 'a c'
+        assert str(alignments[0].second) == 'a c'
+        assert alignments[0].percentIdentity() == 3 / 3 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 3 * 100.0
+        assert alignments[0].percentGap() == 0.0
+        assert score == DEFAULT_MATCH_SCORE * 2
+        assert alignments[0].score == score
+
+class TestSmithWatermannAligner(TestLocalSequenceAligner):
     def _align(self, first, second):
         scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
         return _align(first, second, aligner=SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE))
 
-class TestSmithWatermannAlignerWithString(CommonSequenceAlignerTests):
+class TestSmithWatermannAlignerWithString(TestSmithWatermannAligner):
     def _align(self, first, second):
         scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
         aligner = SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE)

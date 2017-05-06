@@ -483,7 +483,6 @@ class SmithWatermanAligner(object):
     def _create_score_matrix(self, rows, cols, calc_score):
         score_matrix = numpy.zeros((rows, cols), int)
 
-        # Fill the scoring matrix.
         for i in range(1, rows):
             for j in range(1, cols):
                 score_matrix[i][j] = calc_score(score_matrix, i, j)
@@ -499,32 +498,30 @@ class SmithWatermanAligner(object):
             next_pending_roots = []
             for n in pending_roots:
                 i, j = n.data
-                moves = self._next_moves(score_matrix, i, j)
-                if len(moves) == 0:
+                next_loc = self._next_loc(score_matrix, i, j)
+                if next_loc is None:
                     cur_roots.append(n)
                 else:
-                    next_pending_roots.extend([
-                        LinkedListNode(loc, n)
-                        for loc in moves
-                    ])
+                    next_pending_roots.append(
+                        LinkedListNode(next_loc, n)
+                    )
             pending_roots = next_pending_roots
         return cur_roots
 
-    def _next_moves(self, score_matrix, i, j):
-        diag = score_matrix[i - 1][j - 1]
-        up = score_matrix[i - 1][j]
-        left = score_matrix[i][j - 1]
-        max_score = max(diag, up, left)
-        moves = []
-        if max_score == 0:
-            return moves
-        if diag == max_score:
-            moves.append((i - 1, j - 1))
-        if up == max_score:
-            moves.append((i - 1, j))
-        if left == max_score:
-            moves.append((i, j - 1))
-        return moves
+    def _next_loc(self, score_matrix, i, j):
+        diag_score = score_matrix[i - 1][j - 1]
+        up_score = score_matrix[i - 1][j]
+        left_score = score_matrix[i][j - 1]
+        max_score = max(diag_score, up_score, left_score)
+        if max_score == 0 or diag_score == 0:
+            return None
+        if diag_score == max_score:
+            return i - 1, j - 1
+        elif up_score == max_score:
+            return i - 1, j
+        elif left_score == max_score:
+            return i, j - 1
+        return None
 
     def align(self, s1, s2, backtrace=True, gap=GAP_CODE):
         calc_score = lambda score_matrix, i, j: max(
