@@ -496,7 +496,7 @@ class SmithWatermanAligner(object):
                 # Gap on sequenceB.
                 gb = f[i - 1, j] + self.gap_score
 
-                f[i, j] = max(0, max(ab, max(ga, gb)))
+                f[i, j] = max(0, ab, ga, gb)
         return f
 
     def _traceback(self, score_matrix, start_locs):
