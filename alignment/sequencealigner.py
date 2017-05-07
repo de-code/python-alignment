@@ -509,18 +509,16 @@ class SmithWatermanAligner(object):
             LinkedListNode(tuple(loc))
             for loc in start_locs
         ])
-        cur_roots = []
         while len(pending_roots) > 0:
             n = pending_roots.pop()
             i, j = n.data
             next_loc = self._next_loc(score_matrix, i, j)
             if next_loc is None:
-                cur_roots.append(n)
+                yield n
             else:
                 pending_roots.append(
                     LinkedListNode(next_loc, n)
                 )
-        return cur_roots
 
     def _next_loc(self, score_matrix, i, j):
         diag_score = score_matrix[i - 1][j - 1]
