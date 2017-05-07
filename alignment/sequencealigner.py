@@ -512,28 +512,30 @@ class SmithWatermanAligner(object):
         while len(pending_roots) > 0:
             n = pending_roots.pop()
             i, j = n.data
-            next_loc = self._next_loc(score_matrix, i, j)
-            if next_loc is None:
+            next_locs = self._next_locs(score_matrix, i, j)
+            if len(next_locs) == 0:
                 yield n
             else:
-                pending_roots.append(
+                pending_roots.extend([
                     LinkedListNode(next_loc, n)
-                )
+                    for next_loc in next_locs
+                ])
 
-    def _next_loc(self, score_matrix, i, j):
+    def _next_locs(self, score_matrix, i, j):
         diag_score = score_matrix[i - 1][j - 1]
         up_score = score_matrix[i - 1][j]
         left_score = score_matrix[i][j - 1]
         max_score = max(diag_score, up_score, left_score)
         if max_score == 0 or diag_score == 0:
-            return None
+            return []
         if diag_score == max_score:
-            return i - 1, j - 1
-        elif up_score == max_score:
-            return i - 1, j
-        elif left_score == max_score:
-            return i, j - 1
-        return None
+            return [(i - 1, j - 1)]
+        locs = []
+        if up_score == max_score:
+            locs.append((i - 1, j))
+        if left_score == max_score:
+            locs.append((i, j - 1))
+        return locs
 
     def align(self, s1, s2, backtrace=True, gap=GAP_CODE):
         score_matrix = self.computeAlignmentMatrix(s1, s2)

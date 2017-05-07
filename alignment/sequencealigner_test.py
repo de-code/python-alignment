@@ -224,6 +224,22 @@ class TestLocalSequenceAligner(CommonSequenceAlignerTests):
         assert score == DEFAULT_MATCH_SCORE * 3
         assert alignments[0].score == score
 
+    def test_multiple_gap_alignments(self):
+        score, alignments = self._align('abxc', 'axbc')
+        assert len(alignments) == 2
+        assert (
+            set([(str(a.first), str(a.second)) for a in alignments]) ==
+            set([
+                ('a b x - c', 'a - x b c'),
+                ('a - b x c', 'a x b - c')
+            ])
+        )
+        assert alignments[0].percentIdentity() == 3 / 5 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 5 * 100.0
+        assert alignments[0].percentGap() == 2 / 5 * 100.0
+        assert score == DEFAULT_MATCH_SCORE * 3 + DEFAULT_GAP_SCORE * 2
+        assert alignments[0].score == score
+
     def test_shortest_path_alignment(self):
         # this tests that it doesn't pick longer paths on the way
         # (e.g. goes up instead of diagonally)
