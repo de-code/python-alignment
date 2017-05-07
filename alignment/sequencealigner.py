@@ -1,4 +1,4 @@
-from itertools import zip_longest
+from itertools import zip_longest, islice
 from collections import deque
 
 from six import text_type
@@ -537,7 +537,7 @@ class SmithWatermanAligner(object):
             locs.append((i, j - 1))
         return locs
 
-    def align(self, s1, s2, backtrace=True, gap=GAP_CODE):
+    def align(self, s1, s2, backtrace=True, gap=GAP_CODE, limit=None):
         score_matrix = self.computeAlignmentMatrix(s1, s2)
         max_score = score_matrix.max()
 
@@ -546,6 +546,8 @@ class SmithWatermanAligner(object):
 
         max_score_loc = numpy.argwhere(score_matrix == max_score)
         paths = self._traceback(score_matrix, max_score_loc)
+        if limit is not None:
+            paths = islice(paths, limit)
         seq_alignments = [
             _path_to_alignment(score_matrix, path, s1, s2, gap)
             for path in paths

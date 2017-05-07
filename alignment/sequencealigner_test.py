@@ -20,12 +20,14 @@ DEFAULT_GAP_SCORE = -2
 def _align(
         first,
         second,
-        aligner):
+        aligner,
+        **kwargs):
     vocab = Vocabulary()
     score, encodeds = aligner.align(
         vocab.encodeSequence(Sequence(first)),
         vocab.encodeSequence(Sequence(second)),
-        backtrace=True
+        backtrace=True,
+        **kwargs
     )
     return score, [vocab.decodeSequenceAlignment(encoded) for encoded in encodeds]
 
@@ -254,17 +256,35 @@ class TestLocalSequenceAligner(CommonSequenceAlignerTests):
         assert alignments[0].score == score
 
 class TestSmithWatermannAligner(TestLocalSequenceAligner):
-    def _align(self, first, second):
+    def _align(self, first, second, **kwargs):
         scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
-        return _align(first, second, aligner=SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE))
+        return _align(
+            first, second, aligner=SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE), **kwargs)
+
+    def test_limit_alignments(self):
+        score, alignments = self._align('abxc', 'axbc', limit=1)
+        assert len(alignments) == 1
+        assert (
+            (str(alignments[0].first), str(alignments[0].second)) in
+            set([
+                ('a b x - c', 'a - x b c'),
+                ('a - b x c', 'a x b - c')
+            ])
+        )
+        assert alignments[0].percentIdentity() == 3 / 5 * 100.0
+        assert alignments[0].percentSimilarity() == 3 / 5 * 100.0
+        assert alignments[0].percentGap() == 2 / 5 * 100.0
+        assert score == DEFAULT_MATCH_SCORE * 3 + DEFAULT_GAP_SCORE * 2
+        assert alignments[0].score == score
 
 class TestSmithWatermannAlignerWithString(TestSmithWatermannAligner):
-    def _align(self, first, second):
+    def _align(self, first, second, **kwargs):
         scoring = SimpleScoring(DEFAULT_MATCH_SCORE, DEFAULT_MISMATCH_SCORE)
         aligner = SmithWatermanAligner(scoring, DEFAULT_GAP_SCORE)
         return aligner.align(
             Sequence(first),
             Sequence(second),
             backtrace=True,
-            gap='-'
+            gap='-',
+            **kwargs
         )
