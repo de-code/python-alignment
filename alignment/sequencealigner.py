@@ -1,4 +1,5 @@
 from itertools import zip_longest
+from collections import deque
 
 from six import text_type
 from six.moves import range
@@ -24,18 +25,22 @@ class Scoring(object):
         return 0
 
 
-class SimpleScoring(Scoring):
+# class SimpleScoring(Scoring):
 
-    def __init__(self, matchScore, mismatchScore):
-        self.matchScore = matchScore
-        self.mismatchScore = mismatchScore
+#     def __init__(self, matchScore, mismatchScore):
+#         self.matchScore = matchScore
+#         self.mismatchScore = mismatchScore
 
-    def __call__(self, firstElement, secondElement):
-        if firstElement == secondElement:
-            return self.matchScore
-        else:
-            return self.mismatchScore
+#     def __call__(self, firstElement, secondElement):
+#         if firstElement == secondElement:
+#             return self.matchScore
+#         else:
+#             return self.mismatchScore
 
+def SimpleScoring(matchScore, mismatchScore):
+    return lambda firstElement, secondElement: (
+        matchScore if firstElement == secondElement else mismatchScore
+    )
 
 # Alignment -------------------------------------------------------------------
 
@@ -500,23 +505,21 @@ class SmithWatermanAligner(object):
         return f
 
     def _traceback(self, score_matrix, start_locs):
-        pending_roots = [
+        pending_roots = deque([
             LinkedListNode(tuple(loc))
             for loc in start_locs
-        ]
+        ])
         cur_roots = []
         while len(pending_roots) > 0:
-            next_pending_roots = []
-            for n in pending_roots:
-                i, j = n.data
-                next_loc = self._next_loc(score_matrix, i, j)
-                if next_loc is None:
-                    cur_roots.append(n)
-                else:
-                    next_pending_roots.append(
-                        LinkedListNode(next_loc, n)
-                    )
-            pending_roots = next_pending_roots
+            n = pending_roots.pop()
+            i, j = n.data
+            next_loc = self._next_loc(score_matrix, i, j)
+            if next_loc is None:
+                cur_roots.append(n)
+            else:
+                pending_roots.append(
+                    LinkedListNode(next_loc, n)
+                )
         return cur_roots
 
     def _next_loc(self, score_matrix, i, j):
