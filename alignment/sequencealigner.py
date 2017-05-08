@@ -25,22 +25,18 @@ class Scoring(object):
         return 0
 
 
-# class SimpleScoring(Scoring):
+class SimpleScoring(Scoring):
 
-#     def __init__(self, matchScore, mismatchScore):
-#         self.matchScore = matchScore
-#         self.mismatchScore = mismatchScore
+    def __init__(self, matchScore, mismatchScore):
+        self.matchScore = matchScore
+        self.mismatchScore = mismatchScore
 
-#     def __call__(self, firstElement, secondElement):
-#         if firstElement == secondElement:
-#             return self.matchScore
-#         else:
-#             return self.mismatchScore
+    def __call__(self, firstElement, secondElement):
+        if firstElement == secondElement:
+            return self.matchScore
+        else:
+            return self.mismatchScore
 
-def SimpleScoring(matchScore, mismatchScore):
-    return lambda firstElement, secondElement: (
-        matchScore if firstElement == secondElement else mismatchScore
-    )
 
 # Alignment -------------------------------------------------------------------
 
