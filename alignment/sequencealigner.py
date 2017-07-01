@@ -1,5 +1,6 @@
 from itertools import zip_longest, islice
 from collections import deque
+import logging
 
 from six import text_type
 from six.moves import range
@@ -13,7 +14,13 @@ from abc import abstractmethod
 
 from .sequence import GAP_CODE
 from .sequence import EncodedSequence, Sequence
+from .AlignmentMatrix import (
+    compute_alignment_matrix,
+    compute_alignment_matrix_simple_scoring,
+    compute_alignment_matrix_simple_scoring_int
+)
 
+np = numpy
 
 # Scoring ---------------------------------------------------------------------
 
@@ -482,23 +489,38 @@ class SmithWatermanAligner(object):
         self.gap_score = gap_score
 
     def computeAlignmentMatrix(self, first, second):
-        m = len(first) + 1
-        n = len(second) + 1
-        f = numpy.zeros((m, n), int)
-        for i in range(1, m):
-            for j in range(1, n):
-                # Match elements.
-                ab = f[i - 1, j - 1] \
-                    + self.scoring(first[i - 1], second[j - 1])
+        # logging.getLogger(__name__).debug('computeAlignmentMatrix: using native')
+        if isinstance(self.scoring, SimpleScoring):
+            if isinstance(first[0], int):
+                return compute_alignment_matrix_simple_scoring_int(
+                    np.array(first, dtype=np.int32),
+                    np.array(second, dtype=np.int32),
+                    self.scoring.matchScore, self.scoring.mismatchScore, self.gap_score
+                )
+            else:
+                return compute_alignment_matrix_simple_scoring(
+                    first, second,
+                    self.scoring.matchScore, self.scoring.mismatchScore, self.gap_score
+                )
+        else:
+            return compute_alignment_matrix(first, second, self.scoring, self.gap_score)
+        # m = len(first) + 1
+        # n = len(second) + 1
+        # f = numpy.zeros((m, n), int)
+        # for i in range(1, m):
+        #     for j in range(1, n):
+        #         # Match elements.
+        #         ab = f[i - 1, j - 1] \
+        #             + self.scoring(first[i - 1], second[j - 1])
 
-                # Gap on sequenceA.
-                ga = f[i, j - 1] + self.gap_score
+        #         # Gap on sequenceA.
+        #         ga = f[i, j - 1] + self.gap_score
 
-                # Gap on sequenceB.
-                gb = f[i - 1, j] + self.gap_score
+        #         # Gap on sequenceB.
+        #         gb = f[i - 1, j] + self.gap_score
 
-                f[i, j] = max(0, ab, ga, gb)
-        return f
+        #         f[i, j] = max(0, ab, ga, gb)
+        # return f
 
     def _traceback(self, score_matrix, start_locs):
         pending_roots = deque([

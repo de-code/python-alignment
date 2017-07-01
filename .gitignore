@@ -29,3 +29,7 @@ pip-log.txt
 
 # IntelliJ
 .idea
+
+# Cython
+*.c
+*.cpython*

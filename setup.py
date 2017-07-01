@@ -2,6 +2,7 @@
 # coding=utf-8
 
 from distutils.core import setup
+from Cython.Build import cythonize
 
 # noinspection PyArgumentList
 setup(
@@ -15,4 +16,5 @@ setup(
     description='Native Python library for generic sequence alignment.',
     long_description=open('README.rst').read(),
     requires=['numpy', 'six'],
+    ext_modules=cythonize("alignment/AlignmentMatrix.pyx")
 )
